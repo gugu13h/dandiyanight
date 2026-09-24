@@ -38,7 +38,7 @@ const defaultEventData = {
   organizerName: 'Dandiya Nights Entertainment',
   importantInstructions: 'Please arrive 30 minutes before start time. Carry your booking confirmation.',
   nearbyLandmark: 'Near City Central Mall',
-  googleMapsLink: 'https://maps.google.com',
+  googleMapsLink: 'https://maps.app.goo.gl/BzP8suFwuS2BNwYy9?g_st=ac',
   announcements: '',
   createdAt: null,
   updatedAt: null,
@@ -58,6 +58,9 @@ function normalizeContactDetails(eventData) {
   }
   if (normalized.contactEmail === LEGACY_CONTACT_EMAIL) {
     normalized.contactEmail = defaultEventData.contactEmail;
+  }
+  if (normalized.googleMapsLink === 'https://maps.google.com') {
+    normalized.googleMapsLink = defaultEventData.googleMapsLink;
   }
   return normalized;
 }
