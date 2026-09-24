@@ -14,7 +14,16 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
-const hasFirebaseConfig = Object.values(firebaseConfig).every((value) =>
+const requiredFirebaseValues = [
+  firebaseConfig.apiKey,
+  firebaseConfig.authDomain,
+  firebaseConfig.projectId,
+  firebaseConfig.storageBucket,
+  firebaseConfig.messagingSenderId,
+  firebaseConfig.appId,
+];
+
+const hasFirebaseConfig = requiredFirebaseValues.every((value) =>
   value && !value.includes('your_')
 );
 
