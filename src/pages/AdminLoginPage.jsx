@@ -1,5 +1,5 @@
 // Admin Login Page
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -14,10 +14,9 @@ export default function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  if (currentUser && isAdmin) {
-    navigate('/admin', { replace: true });
-    return null;
-  }
+  useEffect(() => {
+    if (currentUser && isAdmin) navigate('/admin', { replace: true });
+  }, [currentUser, isAdmin, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -37,6 +36,8 @@ export default function AdminLoginPage() {
         'auth/wrong-password': 'Incorrect password',
         'auth/invalid-credential': 'Invalid credentials',
         'auth/admin-required': 'This account does not have admin access',
+        'permission-denied': 'Firestore denied access. Add role: admin to this user profile.',
+        'auth/invalid-api-key': 'Firebase API key is invalid',
         'auth/too-many-requests': 'Too many attempts. Try later.',
       };
       toast.error(messages[error.code] || 'Login failed.');
@@ -44,6 +45,8 @@ export default function AdminLoginPage() {
       setLoading(false);
     }
   };
+
+  if (currentUser && isAdmin) return null;
 
   return (
     <div className="auth-page">

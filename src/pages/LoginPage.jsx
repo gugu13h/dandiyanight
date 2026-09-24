@@ -1,5 +1,5 @@
 // Login Page
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -16,11 +16,11 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Redirect if already logged in
-  if (currentUser) {
-    navigate(isAdmin ? '/admin' : '/dashboard', { replace: true });
-    return null;
-  }
+  useEffect(() => {
+    if (currentUser) navigate(isAdmin ? '/admin' : '/dashboard', { replace: true });
+  }, [currentUser, isAdmin, navigate]);
+
+  if (currentUser) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
