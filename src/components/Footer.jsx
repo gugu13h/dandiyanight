@@ -44,6 +44,20 @@ export default function Footer() {
           </div>
         </div>
 
+        <div style={{
+          borderTop: '1px solid var(--color-border)',
+          marginTop: 'var(--space-xl)',
+          paddingTop: 'var(--space-lg)',
+          textAlign: 'center',
+        }}>
+          <p style={{ color: 'var(--color-text)', fontWeight: 600, marginBottom: 'var(--space-sm)' }}>
+            Managing by Gaurav Prabhakar
+          </p>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
+            Volunteers: Deepak Parmanik, Gaurav Prabhakar, Sibu Parmanik, Amit Biraj, Vishal Kumar Yadav, Sumit, Aditya, Nirmal, Viraj
+          </p>
+        </div>
+
         <div className="footer-bottom">
           <p>© {new Date().getFullYear()} Dandiya Nights Entertainment. All rights reserved.</p>
         </div>
