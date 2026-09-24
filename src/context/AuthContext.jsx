@@ -107,17 +107,28 @@ export function AuthProvider({ children }) {
   }
 
   async function loginAsAdmin(email, password) {
+    if (!auth || !db) {
+      const error = new Error('Firebase is not configured');
+      error.code = 'auth/not-configured';
+      throw error;
+    }
+
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
     const userDoc = await getDoc(doc(db, 'users', user.uid));
+    const profile = userDoc.exists() ? userDoc.data() : null;
+    const hasAdminRole = profile?.role?.trim?.().toLowerCase() === 'admin';
 
-    if (!userDoc.exists() || userDoc.data().role !== 'admin') {
+    if (!hasAdminRole) {
       await signOut(auth);
       const error = new Error('Admin access is required');
       error.code = 'auth/admin-required';
       throw error;
     }
 
+    setCurrentUser(user);
+    setUserProfile(profile);
+    setIsAdmin(true);
     return user;
   }
 

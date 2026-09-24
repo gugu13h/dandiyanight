@@ -36,6 +36,7 @@ export default function AdminLoginPage() {
         'auth/wrong-password': 'Incorrect password',
         'auth/invalid-credential': 'Invalid credentials',
         'auth/admin-required': 'This account does not have admin access',
+        'auth/not-configured': 'Firebase is not configured on this server. Add the VITE_FIREBASE_* variables.',
         'permission-denied': 'Firestore denied access. Add role: admin to this user profile.',
         'auth/invalid-api-key': 'Firebase API key is invalid',
         'auth/too-many-requests': 'Too many attempts. Try later.',
