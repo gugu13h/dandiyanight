@@ -7,12 +7,11 @@ import { subscribeToTickets, releaseExpiredReservations } from '../services/tick
 import { createBooking, updatePaymentProof } from '../services/bookingService';
 import { createNotification } from '../services/notificationService';
 import { uploadCloudinaryImage } from '../services/cloudinaryService';
-import { formatCurrency, validateEmail, validateMobile, validateName, validateAddress } from '../utils/helpers';
+import { formatCurrency, normalizeMobile, validateMobile, validateName, validateAddress } from '../utils/helpers';
 import toast from 'react-hot-toast';
 import {
   Ticket,
   User,
-  Mail,
   Phone,
   MapPin,
   ChevronRight,
@@ -24,8 +23,12 @@ import {
 
 const STEPS = ['Personal Details', 'Select Tickets', 'Review & Confirm'];
 
+function getInternalBookingEmail(mobile) {
+  return `${normalizeMobile(mobile)}@dandiyanights.local`;
+}
+
 export default function BookTicketsPage() {
-  const { currentUser, userProfile, register, login } = useAuth();
+  const { currentUser, userProfile, register, loginWithMobile } = useAuth();
 
   const [event, setEvent] = useState(null);
   const [tickets, setTickets] = useState([]);
@@ -41,7 +44,6 @@ export default function BookTicketsPage() {
   // Form data
   const [formData, setFormData] = useState({
     name: '',
-    email: '',
     mobile: '',
     address: '',
   });
@@ -67,7 +69,6 @@ export default function BookTicketsPage() {
     if (userProfile) {
       setFormData({
         name: userProfile.name || '',
-        email: userProfile.email || '',
         mobile: userProfile.mobile || '',
         address: userProfile.address || '',
       });
@@ -113,7 +114,6 @@ export default function BookTicketsPage() {
   const validateStep1 = () => {
     const newErrors = {};
     if (!validateName(formData.name)) newErrors.name = 'Name is required (min 2 characters)';
-    if (!validateEmail(formData.email)) newErrors.email = 'Valid email is required';
     if (!validateMobile(formData.mobile)) newErrors.mobile = 'Valid 10-digit Indian mobile number required';
     if (!validateAddress(formData.address)) newErrors.address = 'Address is required (min 5 characters)';
     setErrors(newErrors);
@@ -149,8 +149,9 @@ export default function BookTicketsPage() {
 
       if (!bookingUser) {
         try {
+          const internalEmail = getInternalBookingEmail(formData.mobile);
           bookingUser = await register(
-            formData.email,
+            internalEmail,
             formData.mobile,
             formData.name,
             formData.mobile,
@@ -158,7 +159,7 @@ export default function BookTicketsPage() {
           );
         } catch (error) {
           if (error.code !== 'auth/email-already-in-use') throw error;
-          bookingUser = await login(formData.email, formData.mobile);
+          bookingUser = await loginWithMobile(formData.mobile, formData.mobile);
         }
       }
 
@@ -166,7 +167,7 @@ export default function BookTicketsPage() {
         bookingUser.uid,
         {
           name: formData.name,
-          email: formData.email,
+          email: bookingUser.email || '',
           mobile: formData.mobile,
           address: formData.address,
           eventId: 'default',
@@ -200,7 +201,6 @@ export default function BookTicketsPage() {
       setBookingResult({
         bookingId,
         name: formData.name,
-        email: formData.email,
         mobile: formData.mobile,
         paymentMethod,
         tickets: selectedTickets.sort((a, b) => a - b),
@@ -212,7 +212,7 @@ export default function BookTicketsPage() {
     } catch (error) {
       console.error('Booking error:', error);
       const messages = {
-        'auth/invalid-credential': 'This email already exists. Use the mobile number used when the account was created.',
+        'auth/invalid-credential': 'This mobile number is already registered. Use the same mobile number and password.',
         'auth/weak-password': 'The mobile number must be at least 6 digits.',
       };
       toast.error(messages[error.code] || error.message || 'Failed to create booking. Please try again.');
@@ -348,8 +348,8 @@ export default function BookTicketsPage() {
             }}>
               <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', lineHeight: 1.8 }}>
                 📌 Please keep your Booking ID <strong>{bookingResult.bookingId}</strong> for future reference.<br />
-                🔐 Login email: <strong>{bookingResult.email}</strong><br />
-                🔑 Login password: your mobile number ({bookingResult.mobile})<br />
+                🔐 Login mobile number: <strong>{bookingResult.mobile}</strong><br />
+                🔑 Login password: your mobile number<br />
                 📞 We will contact you with payment instructions after your registration is reviewed.<br />
                 ⏰ Your selected tickets are temporarily reserved.
               </p>
@@ -391,7 +391,7 @@ export default function BookTicketsPage() {
             }}>
               <AlertTriangle size={20} style={{ color: 'var(--color-warning)' }} />
               <span style={{ color: 'var(--color-text-secondary)', flex: 1 }}>
-                Your account will be created automatically when you confirm your booking. Use your email and mobile number to log in later.
+                Your account will be created automatically when you confirm your booking. Use your mobile number to log in later.
               </span>
             </div>
           )}
@@ -467,23 +467,6 @@ export default function BookTicketsPage() {
                   onChange={handleInputChange}
                 />
                 {errors.name && <span className="form-error">{errors.name}</span>}
-              </div>
-
-              <div className="form-group">
-                <label className="form-label" htmlFor="email">
-                  <Mail size={14} style={{ display: 'inline', marginRight: 6 }} />
-                  Email Address *
-                </label>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  className={`form-input ${errors.email ? 'error' : ''}`}
-                  placeholder="your@email.com"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                />
-                {errors.email && <span className="form-error">{errors.email}</span>}
               </div>
 
               <div className="form-group">
@@ -674,10 +657,6 @@ export default function BookTicketsPage() {
                 <div className="booking-summary-row">
                   <span className="booking-summary-label">Mobile</span>
                   <span className="booking-summary-value">{formData.mobile}</span>
-                </div>
-                <div className="booking-summary-row">
-                  <span className="booking-summary-label">Email</span>
-                  <span className="booking-summary-value">{formData.email}</span>
                 </div>
                 <div className="booking-summary-row">
                   <span className="booking-summary-label">Selected Tickets</span>
