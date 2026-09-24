@@ -3,10 +3,11 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { subscribeToTickets, initializeTickets } from '../../services/ticketService';
 import { subscribeToEvent, updateEvent } from '../../services/eventService';
+import { createBooking, updateBookingStatus } from '../../services/bookingService';
 import { logAdminAction } from '../../services/adminService';
-import { formatCurrency, getTicketStatusLabel } from '../../utils/helpers';
+import { formatCurrency, getTicketStatusLabel, validateMobile, validateName } from '../../utils/helpers';
 import toast from 'react-hot-toast';
-import { Ticket, Save, Loader2, AlertTriangle } from 'lucide-react';
+import { Ticket, Save, Loader2, AlertTriangle, User, Phone, CheckCircle2 } from 'lucide-react';
 
 export default function AdminTickets() {
   const { currentUser } = useAuth();
@@ -16,6 +17,10 @@ export default function AdminTickets() {
   const [totalTickets, setTotalTickets] = useState('');
   const [ticketPrice, setTicketPrice] = useState('');
   const [saving, setSaving] = useState(false);
+  const [directName, setDirectName] = useState('');
+  const [directMobile, setDirectMobile] = useState('');
+  const [selectedDirectTickets, setSelectedDirectTickets] = useState([]);
+  const [directBooking, setDirectBooking] = useState(false);
 
   useEffect(() => {
     const unsub1 = subscribeToTickets((data) => { setTickets(data); setLoading(false); });
@@ -31,7 +36,65 @@ export default function AdminTickets() {
 
   const soldCount = tickets.filter((t) => ['APPROVED', 'CHECKED_IN'].includes(t.status)).length;
   const reservedCount = tickets.filter((t) => ['RESERVED', 'PAYMENT_PENDING'].includes(t.status)).length;
-  const availableCount = tickets.filter((t) => t.status === 'AVAILABLE').length;
+  const ticketCount = Math.max(1, parseInt(totalTickets, 10) || 100);
+  const ticketNumbers = Array.from({ length: ticketCount }, (_, index) => index + 1);
+  const ticketByNumber = new Map(tickets.map((ticket) => [ticket.ticketNumber, ticket]));
+  const availableCount = ticketNumbers.filter((number) => {
+    const ticket = ticketByNumber.get(number);
+    return !ticket || ticket.status === 'AVAILABLE';
+  }).length;
+
+  const isTicketAvailable = (ticketNumber) => {
+    const ticket = ticketByNumber.get(ticketNumber);
+    return !ticket || ticket.status === 'AVAILABLE';
+  };
+
+  const toggleDirectTicket = (ticketNumber) => {
+    if (!isTicketAvailable(ticketNumber)) return;
+    setSelectedDirectTickets((current) => current.includes(ticketNumber)
+      ? current.filter((number) => number !== ticketNumber)
+      : [...current, ticketNumber].sort((first, second) => first - second));
+  };
+
+  const handleDirectBooking = async () => {
+    if (!validateName(directName)) {
+      toast.error('Enter a valid customer name');
+      return;
+    }
+    if (!validateMobile(directMobile)) {
+      toast.error('Enter a valid 10-digit mobile number');
+      return;
+    }
+    if (selectedDirectTickets.length === 0) {
+      toast.error('Select at least one ticket');
+      return;
+    }
+
+    setDirectBooking(true);
+    try {
+      const bookingId = await createBooking(currentUser.uid, {
+        name: directName.trim(),
+        email: '',
+        mobile: directMobile.trim(),
+        address: 'Direct booking by admin',
+        eventId: 'default',
+        pricePerTicket: Number(ticketPrice) || 0,
+        paymentMethod: 'CASH',
+      }, selectedDirectTickets);
+
+      await updateBookingStatus(bookingId, 'PAYMENT_SUCCESSFUL', currentUser.uid);
+      await logAdminAction(currentUser.uid, 'DIRECT_BOOKING_CREATED',
+        `${directName.trim()} - Tickets: ${selectedDirectTickets.join(', ')}`, bookingId);
+      setDirectName('');
+      setDirectMobile('');
+      setSelectedDirectTickets([]);
+      toast.success(`Booking ${bookingId} created successfully`);
+    } catch (error) {
+      toast.error(error.message || 'Unable to create direct booking');
+    } finally {
+      setDirectBooking(false);
+    }
+  };
 
   const handleSave = async () => {
     const newTotal = parseInt(totalTickets);
@@ -67,8 +130,56 @@ export default function AdminTickets() {
   return (
     <div>
       <div className="dashboard-header">
-        <h1>Ticket Management</h1>
         <p>Configure ticket quantity, pricing, and view ticket status</p>
+      </div>
+
+      {/* Direct admin booking */}
+      <div className="card" style={{ marginBottom: 'var(--space-xl)' }}>
+        <h2 style={{ fontFamily: 'var(--font-primary)', fontSize: '1.1rem', fontWeight: 700,
+          marginBottom: 'var(--space-sm)' }}>
+          Direct Booking
+        </h2>
+        <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', marginBottom: 'var(--space-lg)' }}>
+          Enter customer details and select available tickets for an onsite booking.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--space-lg)', marginBottom: 'var(--space-lg)' }}>
+          <div className="form-group">
+            <label className="form-label" htmlFor="direct-booking-name"><User size={14} style={{ display: 'inline', marginRight: 6 }} />Customer Name</label>
+            <input id="direct-booking-name" className="form-input" value={directName}
+              onChange={(e) => setDirectName(e.target.value)} placeholder="Enter customer name" />
+          </div>
+          <div className="form-group">
+            <label className="form-label" htmlFor="direct-booking-mobile"><Phone size={14} style={{ display: 'inline', marginRight: 6 }} />Mobile Number</label>
+            <input id="direct-booking-mobile" className="form-input" value={directMobile}
+              onChange={(e) => setDirectMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
+              placeholder="9876543210" inputMode="numeric" maxLength={10} />
+          </div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--space-md)', flexWrap: 'wrap', marginBottom: 'var(--space-md)' }}>
+          <strong>Select Tickets ({selectedDirectTickets.length} selected)</strong>
+          <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>
+            Available: {availableCount} / {ticketCount}
+          </span>
+        </div>
+        <div className="ticket-grid" style={{ marginBottom: 'var(--space-lg)' }}>
+          {ticketNumbers.map((ticketNumber) => {
+            const available = isTicketAvailable(ticketNumber);
+            const selected = selectedDirectTickets.includes(ticketNumber);
+            const status = ticketByNumber.get(ticketNumber)?.status;
+            return (
+              <button key={ticketNumber} type="button"
+                className={`ticket-cell ${selected ? 'selected' : available ? 'available' : 'unavailable'}`}
+                onClick={() => toggleDirectTicket(ticketNumber)} disabled={!available}
+                title={available ? `Select ticket ${ticketNumber}` : getTicketStatusLabel(status)}>
+                {ticketNumber}
+              </button>
+            );
+          })}
+        </div>
+        <button onClick={handleDirectBooking} className="btn btn-primary" disabled={directBooking || selectedDirectTickets.length === 0}>
+          {directBooking ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Booking...</>
+            : <><CheckCircle2 size={16} /> Book Selected Tickets</>}
+        </button>
       </div>
 
       {/* Config Card */}
@@ -101,7 +212,7 @@ export default function AdminTickets() {
       <div className="stats-grid" style={{ marginBottom: 'var(--space-xl)' }}>
         <div className="stat-card">
           <span className="stat-label">Total</span>
-          <span className="stat-value">{tickets.length}</span>
+          <span className="stat-value">{ticketCount}</span>
         </div>
         <div className="stat-card">
           <span className="stat-label">Available</span>
@@ -140,18 +251,20 @@ export default function AdminTickets() {
           ))}
         </div>
         <div className="ticket-grid">
-          {tickets.map((ticket) => {
+          {ticketNumbers.map((ticketNumber) => {
+            const ticket = ticketByNumber.get(ticketNumber);
+            const status = ticket?.status || 'AVAILABLE';
             let className = 'ticket-cell ';
-            if (ticket.status === 'AVAILABLE') className += 'available';
-            else if (['RESERVED', 'PAYMENT_PENDING'].includes(ticket.status)) className += 'reserved';
-            else if (ticket.status === 'APPROVED') className += 'approved';
-            else if (ticket.status === 'CHECKED_IN') className += 'checked-in';
+            if (status === 'AVAILABLE') className += 'available';
+            else if (['RESERVED', 'PAYMENT_PENDING'].includes(status)) className += 'reserved';
+            else if (status === 'APPROVED') className += 'approved';
+            else if (status === 'CHECKED_IN') className += 'checked-in';
             else className += 'unavailable';
 
             return (
-              <div key={ticket.ticketNumber} className={className}
-                style={{ cursor: 'default' }} title={`#${ticket.ticketNumber} - ${getTicketStatusLabel(ticket.status)}`}>
-                {ticket.ticketNumber}
+              <div key={ticketNumber} className={className}
+                style={{ cursor: 'default' }} title={`#${ticketNumber} - ${getTicketStatusLabel(status)}`}>
+                {ticketNumber}
               </div>
             );
           })}
