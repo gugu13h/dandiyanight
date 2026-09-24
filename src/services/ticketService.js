@@ -57,6 +57,11 @@ export async function initializeTickets(totalTickets, eventId = 'default') {
 
 // Subscribe to all tickets in real-time
 export function subscribeToTickets(callback) {
+  if (!db) {
+    callback([]);
+    return () => {};
+  }
+
   const q = query(
     collection(db, TICKETS_COLLECTION),
     orderBy('ticketNumber', 'asc')
@@ -86,6 +91,8 @@ export async function getAllTickets() {
 
 // Release expired reservations
 export async function releaseExpiredReservations() {
+  if (!db) return 0;
+
   const now = new Date();
   const q = query(
     collection(db, TICKETS_COLLECTION),
