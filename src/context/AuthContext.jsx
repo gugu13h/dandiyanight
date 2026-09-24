@@ -8,7 +8,8 @@ import {
   signOut,
   sendPasswordResetEmail,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, setDoc, serverTimestamp, where } from 'firebase/firestore';
+import { normalizeMobile } from '../utils/helpers';
 
 const AuthContext = createContext(null);
 
@@ -61,6 +62,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   async function register(email, password, name, mobile, address) {
+    const normalizedMobile = normalizeMobile(mobile);
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
@@ -68,7 +70,7 @@ export function AuthProvider({ children }) {
       uid: user.uid,
       name,
       email,
-      mobile,
+      mobile: normalizedMobile,
       address,
       role: 'user',
       createdAt: serverTimestamp(),
@@ -80,6 +82,27 @@ export function AuthProvider({ children }) {
 
   async function login(email, password) {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    return userCredential.user;
+  }
+
+  async function loginWithMobile(mobile, password) {
+    const usersQuery = query(collection(db, 'users'), where('mobile', '==', normalizeMobile(mobile)));
+    const usersSnapshot = await getDocs(usersQuery);
+
+    if (usersSnapshot.empty) {
+      const error = new Error('No account found for this mobile number');
+      error.code = 'auth/mobile-not-found';
+      throw error;
+    }
+
+    const profile = usersSnapshot.docs[0].data();
+    if (!profile.email) {
+      const error = new Error('This user profile has no login email');
+      error.code = 'auth/missing-email';
+      throw error;
+    }
+
+    const userCredential = await signInWithEmailAndPassword(auth, profile.email, password);
     return userCredential.user;
   }
 
@@ -126,6 +149,7 @@ export function AuthProvider({ children }) {
     loading,
     register,
     login,
+    loginWithMobile,
     loginAsAdmin,
     logout,
     resetPassword,

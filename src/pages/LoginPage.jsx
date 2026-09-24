@@ -6,12 +6,12 @@ import toast from 'react-hot-toast';
 import { Mail, Lock, LogIn, Loader2, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
-  const { login, currentUser, isAdmin } = useAuth();
+  const { loginWithMobile, currentUser, isAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname || '/dashboard';
 
-  const [email, setEmail] = useState('');
+  const [mobile, setMobile] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -24,14 +24,14 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email || !password) {
+    if (!mobile || !password) {
       toast.error('Please fill in all fields');
       return;
     }
 
     setLoading(true);
     try {
-      await login(email, password);
+      await loginWithMobile(mobile, password);
       toast.success('Login successful!');
       navigate(from, { replace: true });
     } catch (error) {
@@ -42,6 +42,8 @@ export default function LoginPage() {
         'auth/invalid-credential': 'Invalid email or password',
         'auth/too-many-requests': 'Too many failed attempts. Please try again later.',
         'auth/invalid-email': 'Invalid email address',
+        'auth/mobile-not-found': 'No account found for this mobile number',
+        'auth/missing-email': 'This account is missing its login email',
       };
       toast.error(messages[error.code] || 'Login failed. Please try again.');
     } finally {
@@ -60,18 +62,18 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label" htmlFor="login-email">
+            <label className="form-label" htmlFor="login-mobile">
               <Mail size={14} style={{ display: 'inline', marginRight: 6 }} />
-              Email Address
+              Mobile Number
             </label>
             <input
-              id="login-email"
-              type="email"
+              id="login-mobile"
+              type="tel"
               className="form-input"
-              placeholder="your@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
+              placeholder="9876543210"
+              value={mobile}
+              onChange={(e) => setMobile(e.target.value)}
+              autoComplete="tel"
             />
           </div>
 

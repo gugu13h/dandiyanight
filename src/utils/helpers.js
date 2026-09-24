@@ -6,14 +6,18 @@ export function validateEmail(email) {
 
 export function validateMobile(mobile) {
   // Indian mobile number: 10 digits, starting with 6-9
+  const normalized = normalizeMobile(mobile);
+  const re = /^[6-9]\d{9}$/;
+  return re.test(normalized);
+}
+
+export function normalizeMobile(mobile) {
   const value = String(mobile || '').trim().replace(/[\s-]/g, '');
-  const normalized = value.startsWith('+91')
+  return value.startsWith('+91')
     ? value.slice(3)
     : value.startsWith('91') && value.length === 12
       ? value.slice(2)
       : value;
-  const re = /^[6-9]\d{9}$/;
-  return re.test(normalized);
 }
 
 export function validateName(name) {

@@ -68,6 +68,7 @@ export function subscribeToEvent(eventId = DEFAULT_EVENT_ID, callback) {
     return () => {};
   }
 
+  callback({ id: eventId, ...defaultEventData });
   const eventRef = doc(db, EVENTS_COLLECTION, eventId);
 
   return onSnapshot(eventRef, (snapshot) => {

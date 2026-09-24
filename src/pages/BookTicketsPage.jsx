@@ -76,8 +76,14 @@ export default function BookTicketsPage() {
 
   // Clean up expired reservations periodically
   useEffect(() => {
-    releaseExpiredReservations();
-    const interval = setInterval(releaseExpiredReservations, 60000);
+    releaseExpiredReservations().catch((error) => {
+      console.warn('Could not clean up expired reservations:', error);
+    });
+    const interval = setInterval(() => {
+      releaseExpiredReservations().catch((error) => {
+        console.warn('Could not clean up expired reservations:', error);
+      });
+    }, 60000);
     return () => clearInterval(interval);
   }, []);
 
