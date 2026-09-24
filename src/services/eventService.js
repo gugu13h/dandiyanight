@@ -10,6 +10,7 @@ import {
 
 const EVENTS_COLLECTION = 'events';
 const DEFAULT_EVENT_ID = 'default';
+const LEGACY_EVENT_DATES = ['2026-10-14', '2026-10-15'];
 const LEGACY_CONTACT_PHONE = '+91 98765 43210';
 const LEGACY_CONTACT_EMAIL = 'info@dandiyanights.com';
 
@@ -17,8 +18,8 @@ const LEGACY_CONTACT_EMAIL = 'info@dandiyanights.com';
 const defaultEventData = {
   name: 'Dandiya Nights 2026',
   description: 'Join us for the most spectacular Dandiya & Garba night of the year! Experience the magic of traditional dance, live music, and festive celebrations under the stars.',
-  date: '2026-10-15',
-  dates: ['2026-10-15', '2026-10-16', '2026-10-17'],
+  date: '2026-10-10',
+  dates: ['2026-10-10'],
   startTime: '19:00',
   endTime: '23:00',
   venue: 'Grand Celebration Hall',
@@ -45,6 +46,10 @@ const defaultEventData = {
 
 function normalizeContactDetails(eventData) {
   const normalized = { ...defaultEventData, ...eventData };
+  if (LEGACY_EVENT_DATES.includes(normalized.date)) {
+    normalized.date = defaultEventData.date;
+    normalized.dates = defaultEventData.dates;
+  }
   if (normalized.contactPhone === LEGACY_CONTACT_PHONE) {
     normalized.contactPhone = defaultEventData.contactPhone;
   }

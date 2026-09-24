@@ -18,6 +18,7 @@ import {
 
 export default function HomePage() {
   const [event, setEvent] = useState(null);
+  const [daysUntilEvent, setDaysUntilEvent] = useState(null);
 
   useEffect(() => {
     const unsubscribe = subscribeToEvent('default', (eventData) => {
@@ -25,6 +26,20 @@ export default function HomePage() {
     });
     return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    if (!event?.date) return undefined;
+
+    const eventDate = new Date(`${event.date}T00:00:00`);
+    const updateDaysRemaining = () => {
+      const remaining = eventDate.getTime() - Date.now();
+      setDaysUntilEvent(Math.max(0, Math.ceil(remaining / (1000 * 60 * 60 * 24))));
+    };
+
+    updateDaysRemaining();
+    const interval = setInterval(updateDaysRemaining, 60 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [event?.date]);
 
   const features = [
     { icon: <Music size={28} />, title: 'Live Music', desc: 'Enjoy electrifying live Garba and Dandiya music all night long.' },
@@ -58,6 +73,13 @@ export default function HomePage() {
           <p className="hero-subtitle">
             Celebrate. Dance. Connect.
           </p>
+
+          {daysUntilEvent !== null && (
+            <div className="hero-price" style={{ color: 'var(--color-secondary)' }}>
+              <Clock size={20} />
+              {daysUntilEvent > 0 ? `${daysUntilEvent} days left` : 'Event day is here'}
+            </div>
+          )}
 
           {event && (
             <div className="hero-price">
