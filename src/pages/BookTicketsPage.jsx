@@ -254,9 +254,20 @@ export default function BookTicketsPage() {
     );
   }
 
+  const totalTicketCount = Math.max(event?.totalTickets || 0, tickets.length, 100);
+  const ticketByNumber = new Map(tickets.map((ticket) => [ticket.ticketNumber, ticket]));
+  const ticketNumbers = Array.from({ length: totalTicketCount }, (_, index) => index + 1);
+  const isAvailableTicket = (ticketNumber) => {
+    const ticket = ticketByNumber.get(ticketNumber);
+    return !ticket || ticket.status === 'AVAILABLE' || (
+      ticket.status === 'RESERVED' && ticket.reservedUntil?.toDate?.() < new Date()
+    );
+  };
+  const availableCount = ticketNumbers.filter(isAvailableTicket).length;
+  const occupiedCount = totalTicketCount - availableCount;
+
   // Check if sold out
-  const availableCount = tickets.filter((t) => t.status === 'AVAILABLE').length;
-  if (availableCount === 0 && tickets.length > 0 && !bookingComplete) {
+  if (availableCount === 0 && !bookingComplete) {
     return (
       <div className="page-wrapper">
         <section className="section">
@@ -504,6 +515,39 @@ export default function BookTicketsPage() {
                 />
                 {errors.address && <span className="form-error">{errors.address}</span>}
               </div>
+
+              <div style={{ marginTop: 'var(--space-xl)', paddingTop: 'var(--space-lg)', borderTop: '1px solid var(--color-border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--space-md)', flexWrap: 'wrap', marginBottom: 'var(--space-sm)' }}>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Ticket Availability</h3>
+                  <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>
+                    {availableCount} available / {occupiedCount} booked
+                  </span>
+                </div>
+                <div className="ticket-legend" style={{ marginBottom: 'var(--space-sm)' }}>
+                  <div className="ticket-legend-item">
+                    <div className="ticket-legend-color" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }} />
+                    Available
+                  </div>
+                  <div className="ticket-legend-item">
+                    <div className="ticket-legend-color" style={{ background: 'rgba(59,130,246,0.15)', borderColor: 'rgba(59,130,246,0.3)' }} />
+                    Booked / Reserved
+                  </div>
+                </div>
+                <div className="ticket-grid" aria-label="Ticket availability map">
+                  {ticketNumbers.map((ticketNumber) => {
+                    const ticket = ticketByNumber.get(ticketNumber);
+                    const available = isAvailableTicket(ticketNumber);
+                    return (
+                      <div key={ticketNumber}
+                        className={`ticket-cell ${available ? 'available' : 'reserved'}`}
+                        style={{ cursor: 'default' }}
+                        title={`Ticket ${ticketNumber} - ${available ? 'Available' : ticket?.status || 'Booked'}`}>
+                        {ticketNumber}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
 
@@ -523,7 +567,7 @@ export default function BookTicketsPage() {
                 </h2>
                 <div style={{ display: 'flex', gap: 'var(--space-md)', alignItems: 'center' }}>
                   <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>
-                    Available: {availableCount} / {tickets.length}
+                    Available: {availableCount} / {totalTicketCount}
                   </span>
                   <span style={{
                     color: 'var(--color-secondary)',
@@ -569,19 +613,20 @@ export default function BookTicketsPage() {
 
               {/* Ticket Grid */}
               <div className="ticket-grid">
-                {tickets.map((ticket) => {
-                  const isSelected = selectedTickets.includes(ticket.ticketNumber);
-                  const isAvailable = ticket.status === 'AVAILABLE' ||
-                    (ticket.status === 'RESERVED' && ticket.reservedUntil?.toDate() < new Date());
+                {ticketNumbers.map((ticketNumber) => {
+                  const ticket = ticketByNumber.get(ticketNumber);
+                  const isSelected = selectedTickets.includes(ticketNumber);
+                  const isAvailable = isAvailableTicket(ticketNumber);
+                  const ticketStatus = ticket?.status || 'AVAILABLE';
 
                   let className = 'ticket-cell ';
                   if (isSelected) {
                     className += 'selected';
                   } else if (isAvailable) {
                     className += 'available';
-                  } else if (ticket.status === 'RESERVED' || ticket.status === 'PAYMENT_PENDING') {
+                  } else if (ticketStatus === 'RESERVED' || ticketStatus === 'PAYMENT_PENDING') {
                     className += 'reserved';
-                  } else if (ticket.status === 'APPROVED' || ticket.status === 'CHECKED_IN') {
+                  } else if (ticketStatus === 'APPROVED' || ticketStatus === 'CHECKED_IN') {
                     className += 'approved';
                   } else {
                     className += 'unavailable';
@@ -589,13 +634,13 @@ export default function BookTicketsPage() {
 
                   return (
                     <button
-                      key={ticket.ticketNumber}
+                      key={ticketNumber}
                       className={className}
-                      onClick={() => isAvailable && toggleTicket(ticket.ticketNumber)}
+                      onClick={() => isAvailable && toggleTicket(ticketNumber)}
                       disabled={!isAvailable && !isSelected}
-                      aria-label={`Ticket ${ticket.ticketNumber} - ${isSelected ? 'Selected' : isAvailable ? 'Available' : 'Unavailable'}`}
+                      aria-label={`Ticket ${ticketNumber} - ${isSelected ? 'Selected' : isAvailable ? 'Available' : 'Unavailable'}`}
                     >
-                      {ticket.ticketNumber}
+                      {ticketNumber}
                     </button>
                   );
                 })}
