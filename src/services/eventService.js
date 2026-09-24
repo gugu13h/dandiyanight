@@ -10,7 +10,7 @@ import {
 
 const EVENTS_COLLECTION = 'events';
 const DEFAULT_EVENT_ID = 'default';
-const LEGACY_EVENT_DATES = ['2026-10-14', '2026-10-15'];
+const LEGACY_EVENT_DATES = ['2026-10-10', '2026-10-15'];
 const LEGACY_CONTACT_PHONE = '+91 98765 43210';
 const LEGACY_CONTACT_EMAIL = 'info@dandiyanights.com';
 
@@ -18,8 +18,8 @@ const LEGACY_CONTACT_EMAIL = 'info@dandiyanights.com';
 const defaultEventData = {
   name: 'Dandiya Nights 2026',
   description: 'Join us for the most spectacular Dandiya & Garba night of the year! Experience the magic of traditional dance, live music, and festive celebrations under the stars.',
-  date: '2026-10-10',
-  dates: ['2026-10-10'],
+  date: '2026-10-14',
+  dates: ['2026-10-14'],
   startTime: '19:00',
   endTime: '23:00',
   venue: 'Grand Celebration Hall',
