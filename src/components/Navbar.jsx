@@ -109,6 +109,7 @@ export default function Navbar() {
             {link.label}
           </NavLink>
         ))}
+        <Link to="/volunteers">Volunteers</Link>
         <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: '8px 0' }} />
         {currentUser ? (
           <>

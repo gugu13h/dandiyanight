@@ -15,6 +15,7 @@ import BookTicketsPage from './pages/BookTicketsPage';
 import ContactPage from './pages/ContactPage';
 import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
+import VolunteersPage from './pages/VolunteersPage';
 
 // Auth pages
 import LoginPage from './pages/LoginPage';
@@ -59,6 +60,7 @@ export default function App() {
           <Route path="/contact" element={<><ContactPage /><Footer /></>} />
           <Route path="/terms" element={<><TermsPage /><Footer /></>} />
           <Route path="/privacy" element={<><PrivacyPage /><Footer /></>} />
+          <Route path="/volunteers" element={<><VolunteersPage /><Footer /></>} />
 
           {/* Auth routes */}
           <Route path="/login" element={<LoginPage />} />

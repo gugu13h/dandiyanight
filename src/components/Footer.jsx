@@ -2,6 +2,8 @@
 import { Link } from 'react-router-dom';
 
 export default function Footer() {
+  const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+
   return (
     <footer className="footer">
       <div className="container">
@@ -16,32 +18,24 @@ export default function Footer() {
           <div>
             <h4 className="footer-heading">Quick Links</h4>
             <div className="footer-links">
-              <Link to="/">Home</Link>
-              <Link to="/book">Book Tickets</Link>
-              <Link to="/event">Event Details</Link>
-              <Link to="/venue">Venue</Link>
-              <Link to="/contact">Contact</Link>
+              <Link to="/" onClick={scrollToTop}>Home</Link>
+              <Link to="/book" onClick={scrollToTop}>Book Tickets</Link>
+              <Link to="/event" onClick={scrollToTop}>Event Details</Link>
+              <Link to="/venue" onClick={scrollToTop}>Venue</Link>
+              <Link to="/contact" onClick={scrollToTop}>Contact</Link>
             </div>
           </div>
 
           <div>
             <h4 className="footer-heading">Account</h4>
             <div className="footer-links">
-              <Link to="/login">Login</Link>
-              <Link to="/register">Register</Link>
-              <Link to="/dashboard">My Dashboard</Link>
-              <Link to="/forgot-password">Forgot Password</Link>
+              <Link to="/login" onClick={scrollToTop}>Login</Link>
+              <Link to="/register" onClick={scrollToTop}>Register</Link>
+              <Link to="/dashboard" onClick={scrollToTop}>My Dashboard</Link>
+              <Link to="/forgot-password" onClick={scrollToTop}>Forgot Password</Link>
             </div>
           </div>
 
-          <div>
-            <h4 className="footer-heading">Legal</h4>
-            <div className="footer-links">
-              <Link to="/terms">Terms & Conditions</Link>
-              <Link to="/privacy">Privacy Policy</Link>
-              <Link to="/terms#refund">Cancellation & Refund</Link>
-            </div>
-          </div>
         </div>
 
         <div style={{

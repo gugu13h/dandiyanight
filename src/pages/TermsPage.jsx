@@ -1,7 +1,20 @@
 // Terms & Conditions Page
+import { useEffect } from 'react';
 import { FileText } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 
 export default function TermsPage() {
+  const { hash } = useLocation();
+
+  useEffect(() => {
+    const targetId = hash.slice(1);
+    if (!targetId) return;
+
+    requestAnimationFrame(() => {
+      document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, [hash]);
+
   const sections = [
     {
       title: 'Ticket Booking',
