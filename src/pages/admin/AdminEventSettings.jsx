@@ -6,6 +6,8 @@ import { subscribeToEvent, updateEvent } from '../../services/eventService';
 const fields = [
   ['name', 'Event Name'], ['date', 'Event Date'], ['startTime', 'Start Time'],
   ['endTime', 'End Time'], ['venue', 'Venue'], ['city', 'City'],
+  ['address', 'Venue Address'], ['parkingInfo', 'Parking Information'],
+  ['nearbyLandmark', 'Nearby Landmark'],
   ['ticketPrice', 'Ticket Price'], ['bookingStatus', 'Booking Status'],
 ];
 

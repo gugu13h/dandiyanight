@@ -13,6 +13,13 @@ const DEFAULT_EVENT_ID = 'default';
 const LEGACY_EVENT_DATES = ['2026-10-10', '2026-10-15'];
 const LEGACY_CONTACT_PHONE = '+91 98765 43210';
 const LEGACY_CONTACT_EMAIL = 'info@dandiyanights.com';
+const LEGACY_VENUE_DETAILS = {
+  endTime: '23:00',
+  address: '123 Festival Road, Cultural District, Mumbai, Maharashtra 400001',
+  city: 'Mumbai',
+  parkingInfo: 'Free parking available for 200+ vehicles at the venue premises.',
+  nearbyLandmark: 'Near City Central Mall',
+};
 
 // Default event data
 const defaultEventData = {
@@ -62,6 +69,9 @@ function normalizeContactDetails(eventData) {
   if (normalized.googleMapsLink === 'https://maps.google.com') {
     normalized.googleMapsLink = defaultEventData.googleMapsLink;
   }
+  Object.entries(LEGACY_VENUE_DETAILS).forEach(([key, legacyValue]) => {
+    if (normalized[key] === legacyValue) normalized[key] = defaultEventData[key];
+  });
   return normalized;
 }
 
