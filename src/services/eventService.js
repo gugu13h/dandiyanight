@@ -37,7 +37,7 @@ const defaultEventData = {
   bookingStatus: 'BOOKING_OPEN',
   dressCode: 'Traditional Indian attire (Chaniya Choli / Kurta Pajama recommended)',
   entryRules: 'Valid ticket and ID proof required for entry. No outside food or drinks allowed.',
-  ageRestriction: 'Children below 4 years enter free. Ages 5-12 at half price.',
+  ageRestriction: 'Children below 4 years enter free.',
   parkingInfo: 'Available',
   contactPhone: '+91 7903400303',
   contactEmail: 'gauravprabhakar33@gmail.com',
