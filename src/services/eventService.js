@@ -13,6 +13,7 @@ const DEFAULT_EVENT_ID = 'default';
 const LEGACY_EVENT_DATES = ['2026-10-10', '2026-10-15'];
 const LEGACY_CONTACT_PHONE = '+91 98765 43210';
 const LEGACY_CONTACT_EMAIL = 'info@dandiyanights.com';
+const LEGACY_AGE_RESTRICTION = 'Children below 5 years enter free. Ages 5-12 at half price.';
 const LEGACY_VENUE_DETAILS = {
   endTime: '23:00',
   address: '123 Festival Road, Cultural District, Mumbai, Maharashtra 400001',
@@ -65,6 +66,9 @@ function normalizeContactDetails(eventData) {
   }
   if (normalized.contactEmail === LEGACY_CONTACT_EMAIL) {
     normalized.contactEmail = defaultEventData.contactEmail;
+  }
+  if (normalized.ageRestriction === LEGACY_AGE_RESTRICTION) {
+    normalized.ageRestriction = defaultEventData.ageRestriction;
   }
   if (normalized.googleMapsLink === 'https://maps.google.com') {
     normalized.googleMapsLink = defaultEventData.googleMapsLink;
