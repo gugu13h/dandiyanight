@@ -23,6 +23,7 @@ import {
 const BOOKINGS_COLLECTION = 'bookings';
 const TICKETS_COLLECTION = 'tickets';
 const COUNTERS_COLLECTION = 'counters';
+const EVENTS_COLLECTION = 'events';
 
 // Generate human-readable booking ID: DN-YYYY-NNNN
 async function generateBookingId() {
@@ -51,6 +52,14 @@ export async function createBooking(userId, bookingData, selectedTickets) {
   );
 
   await runTransaction(db, async (transaction) => {
+    // Re-check availability in the transaction so an already open booking page
+    // cannot submit after an admin closes bookings.
+    const eventRef = doc(db, EVENTS_COLLECTION, bookingData.eventId || 'default');
+    const eventDoc = await transaction.get(eventRef);
+    if (eventDoc.exists() && eventDoc.data().bookingStatus === 'BOOKING_CLOSED') {
+      throw new Error('Bookings are currently closed. Please contact the management team for more information.');
+    }
+
     // Check all tickets are available
     const ticketRefs = selectedTickets.map((num) =>
       doc(db, TICKETS_COLLECTION, `ticket-${num}`)

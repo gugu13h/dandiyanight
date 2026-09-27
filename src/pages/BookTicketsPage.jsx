@@ -244,8 +244,13 @@ export default function BookTicketsPage() {
                 Bookings Closed
               </h2>
               <p style={{ color: 'var(--color-text-secondary)', marginBottom: 'var(--space-lg)' }}>
-                Bookings are currently closed. Please check back later or contact us for more information.
+                Bookings are currently closed because of the heavy crowd. For further information, please call the management team.
               </p>
+              {event?.contactPhone && (
+                <a href={`tel:${event.contactPhone}`} className="btn btn-primary" style={{ marginRight: 'var(--space-sm)' }}>
+                  Call Management Team
+                </a>
+              )}
               <Link to="/" className="btn btn-primary">Back to Home</Link>
             </div>
           </div>
