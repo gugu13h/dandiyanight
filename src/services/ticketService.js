@@ -55,6 +55,17 @@ export async function initializeTickets(totalTickets, eventId = 'default') {
   }
 }
 
+export async function updateSweetDistribution(ticketNumber, received, adminUid) {
+  const ticketRef = doc(db, TICKETS_COLLECTION, `ticket-${ticketNumber}`);
+  await setDoc(ticketRef, {
+    ticketNumber,
+    eventId: 'default',
+    sweetReceived: received,
+    sweetReceivedAt: received ? serverTimestamp() : null,
+    sweetReceivedBy: received ? adminUid : null,
+  }, { merge: true });
+}
+
 // Subscribe to all tickets in real-time
 export function subscribeToTickets(callback) {
   if (!db) {
@@ -111,6 +122,9 @@ export async function releaseExpiredReservations() {
         bookingId: null,
         userId: null,
         reservedUntil: null,
+        sweetReceived: false,
+        sweetReceivedAt: null,
+        sweetReceivedBy: null,
       });
       count++;
     }

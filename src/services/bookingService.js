@@ -255,6 +255,9 @@ export async function updateBookingStatus(bookingId, newStatus, adminUid) {
         bookingId: null,
         userId: null,
         reservedUntil: null,
+        sweetReceived: false,
+        sweetReceivedAt: null,
+        sweetReceivedBy: null,
       });
     }
     batch.update(bookingRef, updateData);
@@ -308,6 +311,9 @@ export async function deleteBooking(bookingId) {
       approvedAt: null,
       checkedIn: false,
       checkedInAt: null,
+      sweetReceived: false,
+      sweetReceivedAt: null,
+      sweetReceivedBy: null,
     }, { merge: true });
   }
 

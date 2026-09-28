@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard, BookOpen, Ticket, Users, CreditCard,
   Settings, Wallet, ScanLine, BarChart3, ScrollText,
-  LogOut, Menu, X, ChevronLeft, Shield,
+  LogOut, Menu, X, ChevronLeft, Shield, Gift,
 } from 'lucide-react';
 
 export default function AdminDashboardLayout() {
@@ -22,6 +22,7 @@ export default function AdminDashboardLayout() {
     { to: '/admin', icon: <LayoutDashboard size={18} />, label: 'Dashboard', end: true },
     { to: '/admin/bookings', icon: <BookOpen size={18} />, label: 'Bookings' },
     { to: '/admin/tickets', icon: <Ticket size={18} />, label: 'Tickets' },
+    { to: '/admin/sweet-distribution', icon: <Gift size={18} />, label: 'Sweet Distribution' },
     { to: '/admin/users', icon: <Users size={18} />, label: 'Users' },
     { to: '/admin/payments', icon: <CreditCard size={18} />, label: 'Payments' },
     { to: '/admin/event-settings', icon: <Settings size={18} />, label: 'Event Settings' },

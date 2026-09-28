@@ -37,6 +37,7 @@ import AdminDashboardLayout from './pages/admin/AdminDashboardLayout';
 import AdminDashboardHome from './pages/admin/AdminDashboardHome';
 import AdminBookings from './pages/admin/AdminBookings';
 import AdminTickets from './pages/admin/AdminTickets';
+import AdminSweetDistribution from './pages/admin/AdminSweetDistribution';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminPayments from './pages/admin/AdminPayments';
 import AdminEventSettings from './pages/admin/AdminEventSettings';
@@ -83,6 +84,7 @@ export default function App() {
             <Route index element={<AdminDashboardHome />} />
             <Route path="bookings" element={<AdminBookings />} />
             <Route path="tickets" element={<AdminTickets />} />
+            <Route path="sweet-distribution" element={<AdminSweetDistribution />} />
             <Route path="users" element={<AdminUsers />} />
             <Route path="payments" element={<AdminPayments />} />
             <Route path="event-settings" element={<AdminEventSettings />} />
