@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { subscribeToEvent } from '../services/eventService';
 import { formatDate, formatTime, formatCurrency } from '../utils/helpers';
+import BookingNoticeModal from '../components/BookingNoticeModal';
 import {
   Calendar,
   Clock,
@@ -19,6 +20,7 @@ import {
 export default function HomePage() {
   const [event, setEvent] = useState(null);
   const [daysUntilEvent, setDaysUntilEvent] = useState(null);
+  const [showBookingNotice, setShowBookingNotice] = useState(false);
 
   useEffect(() => {
     const unsubscribe = subscribeToEvent('default', (eventData) => {
@@ -108,16 +110,10 @@ export default function HomePage() {
           </div>
 
           <div className="hero-cta">
-            {event?.bookingStatus === 'BOOKING_CLOSED' ? (
-              <div className="btn btn-lg" style={{ background: 'var(--color-surface)', cursor: 'default' }}>
-                Bookings Currently Closed
-              </div>
-            ) : (
-              <Link to="/book" className="btn btn-primary btn-lg btn-glow">
-                <Ticket size={20} />
-                Book Now
-              </Link>
-            )}
+            <button type="button" onClick={() => setShowBookingNotice(true)} className="btn btn-primary btn-lg btn-glow">
+              <Ticket size={20} />
+              Book Now
+            </button>
             <Link to="/event" className="btn btn-secondary btn-lg">
               View Details
             </Link>
@@ -204,11 +200,14 @@ export default function HomePage() {
           }}>
             Limited tickets available. Book now to secure your spot at the most talked-about Garba event of the season.
           </p>
-          <Link to="/book" className="btn btn-primary btn-lg btn-glow">
+          <button type="button" onClick={() => setShowBookingNotice(true)} className="btn btn-primary btn-lg btn-glow">
             <Ticket size={20} /> Reserve Your Tickets
-          </Link>
+          </button>
         </div>
       </section>
+      {showBookingNotice && (
+        <BookingNoticeModal event={event} onClose={() => setShowBookingNotice(false)} />
+      )}
     </>
   );
 }

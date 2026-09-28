@@ -1,8 +1,8 @@
 // Event Details Page
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { subscribeToEvent } from '../services/eventService';
 import { formatDate, formatTime, formatCurrency } from '../utils/helpers';
+import BookingNoticeModal from '../components/BookingNoticeModal';
 import {
   Calendar,
   Clock,
@@ -20,6 +20,7 @@ import {
 export default function EventDetailsPage() {
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showBookingNotice, setShowBookingNotice] = useState(false);
 
   useEffect(() => {
     const unsubscribe = subscribeToEvent('default', (eventData) => {
@@ -162,18 +163,15 @@ export default function EventDetailsPage() {
           )}
 
           <div style={{ textAlign: 'center' }}>
-            {event.bookingStatus === 'BOOKING_CLOSED' ? (
-              <div className="btn btn-lg" style={{ background: 'var(--color-surface)', cursor: 'default' }}>
-                Bookings Currently Closed
-              </div>
-            ) : (
-              <Link to="/book" className="btn btn-primary btn-lg btn-glow">
-                <Ticket size={20} /> Book Your Tickets
-              </Link>
-            )}
+            <button type="button" onClick={() => setShowBookingNotice(true)} className="btn btn-primary btn-lg btn-glow">
+              <Ticket size={20} /> Book Your Tickets
+            </button>
           </div>
         </div>
       </section>
+      {showBookingNotice && (
+        <BookingNoticeModal event={event} onClose={() => setShowBookingNotice(false)} />
+      )}
     </div>
   );
 }
