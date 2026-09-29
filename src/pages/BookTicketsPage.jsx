@@ -260,7 +260,7 @@ export default function BookTicketsPage() {
   }
 
   const totalTicketCount = Math.max(event?.totalTickets || 0, tickets.length, 100);
-  const ticketByNumber = new Map(tickets.map((ticket) => [ticket.ticketNumber, ticket]));
+  const ticketByNumber = new Map(tickets.map((ticket) => [Number(ticket.ticketNumber), ticket]));
   const ticketNumbers = Array.from({ length: totalTicketCount }, (_, index) => index + 1);
   const isAvailableTicket = (ticketNumber) => {
     const ticket = ticketByNumber.get(ticketNumber);
