@@ -1,7 +1,7 @@
 // Admin Bookings Management
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { subscribeToAllBookings, updateBookingStatus, deleteBooking } from '../../services/bookingService';
+import { subscribeToAllBookings, updateBookingStatus, deleteBooking, repairTicketsForBookings } from '../../services/bookingService';
 import { logAdminAction } from '../../services/adminService';
 import { createNotification } from '../../services/notificationService';
 import { formatCurrency, formatTimestamp, getStatusLabel, getStatusColor } from '../../utils/helpers';
@@ -27,6 +27,9 @@ export default function AdminBookings() {
     const unsub = subscribeToAllBookings((data) => {
       setBookings(data);
       setLoading(false);
+      repairTicketsForBookings(data).catch((error) => {
+        console.error('Could not repair ticket availability:', error);
+      });
     });
     return unsub;
   }, []);
