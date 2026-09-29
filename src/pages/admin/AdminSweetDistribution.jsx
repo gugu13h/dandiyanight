@@ -36,6 +36,22 @@ export default function AdminSweetDistribution() {
   const ticketByNumber = new Map(tickets.map((ticket) => [Number(ticket.ticketNumber), ticket]));
   const bookingById = new Map(bookings.map((booking) => [booking.bookingId || booking.id, booking]));
   const bookingByTicket = new Map();
+  bookings.forEach((booking) => {
+    if (
+      (booking.eventId || 'default') !== 'default' ||
+      UNAVAILABLE_BOOKING_STATUSES.has(booking.status)
+    ) return;
+
+    (booking.ticketNumbers || []).forEach((rawTicketNumber) => {
+      const number = Number(rawTicketNumber);
+      if (
+        number >= 1 && number <= SWEET_TICKET_COUNT &&
+        !bookingByTicket.has(number)
+      ) {
+        bookingByTicket.set(number, booking);
+      }
+    });
+  });
   tickets.forEach((ticket) => {
     const number = Number(ticket.ticketNumber);
     const booking = bookingById.get(ticket.bookingId);
