@@ -26,8 +26,8 @@ const LEGACY_VENUE_DETAILS = {
 const defaultEventData = {
   name: 'Dandiya Nights 2026',
   description: 'Join us for the most spectacular Dandiya & Garba night of the year! Experience the magic of traditional dance, live music, and festive celebrations under the stars.',
-  date: '2026-10-14',
-  dates: ['2026-10-14'],
+  date: '2026-10-15',
+  dates: ['2026-10-15'],
   startTime: '19:00',
   endTime: '22:10',
   venue: 'Grand Celebration Hall',
