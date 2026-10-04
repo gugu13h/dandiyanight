@@ -69,6 +69,16 @@ export default function AdminSweetDistribution() {
   const selectedBooking = selectedTicketNumber === null
     ? null
     : bookingByTicket.get(selectedTicketNumber);
+  const selectedName = selectedBooking?.name?.trim().toLocaleLowerCase() || '';
+  const sameNameTickets = selectedName
+    ? Array.from(bookingByTicket, ([ticketNumber, booking]) => ({
+      ticketNumber,
+      booking,
+      ticket: ticketByNumber.get(ticketNumber),
+    }))
+      .filter(({ booking }) => booking.name?.trim().toLocaleLowerCase() === selectedName)
+      .sort((first, second) => first.ticketNumber - second.ticketNumber)
+    : [];
   const selectedTicketReceived = selectedTicket?.sweetReceived === true;
   const loading = !ticketsLoaded || !bookingsLoaded;
   const receivedCount = tickets.filter((ticket) => (
@@ -169,6 +179,28 @@ export default function AdminSweetDistribution() {
             </div>
             {selectedBooking ? (
               <>
+                {sameNameTickets.length > 1 && (
+                  <div className="sweet-ticket-picker">
+                    <p>Other passes under {selectedBooking.name}:</p>
+                    <div className="sweet-ticket-options">
+                      {sameNameTickets.map(({ ticketNumber, ticket }) => {
+                        const received = ticket?.sweetReceived === true;
+                        return (
+                          <button
+                            key={ticketNumber}
+                            type="button"
+                            className={`sweet-ticket-option${received ? ' received' : ''}${ticketNumber === selectedTicketNumber ? ' selected' : ''}`}
+                            onClick={() => setSelectedTicketNumber(ticketNumber)}
+                            aria-pressed={ticketNumber === selectedTicketNumber}
+                          >
+                            <span>#{ticketNumber}</span>
+                            <span>{received ? 'Received' : 'Pending'}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
                 <div className="booking-summary">
                   <div className="booking-summary-row">
                     <span className="booking-summary-label">Booked By</span>
