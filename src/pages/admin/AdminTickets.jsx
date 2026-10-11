@@ -3,7 +3,12 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { subscribeToTickets, initializeTickets } from '../../services/ticketService';
 import { subscribeToEvent, updateEvent } from '../../services/eventService';
-import { createBooking, updateBookingStatus } from '../../services/bookingService';
+import {
+  createBooking,
+  repairTicketsForBookings,
+  subscribeToAllBookings,
+  updateBookingStatus,
+} from '../../services/bookingService';
 import { logAdminAction } from '../../services/adminService';
 import { formatCurrency, getTicketStatusLabel, validateMobile, validateName } from '../../utils/helpers';
 import toast from 'react-hot-toast';
@@ -24,14 +29,19 @@ export default function AdminTickets() {
 
   useEffect(() => {
     const unsub1 = subscribeToTickets((data) => { setTickets(data); setLoading(false); });
-    const unsub2 = subscribeToEvent('default', (e) => {
+    const unsub2 = subscribeToAllBookings((bookings) => {
+      repairTicketsForBookings(bookings).catch((error) => {
+        console.error('Could not repair ticket availability:', error);
+      });
+    });
+    const unsub3 = subscribeToEvent('default', (e) => {
       setEvent(e);
       if (e) {
         setTotalTickets(String(e.totalTickets || 100));
         setTicketPrice(String(e.ticketPrice || 500));
       }
     });
-    return () => { unsub1(); unsub2(); };
+    return () => { unsub1(); unsub2(); unsub3(); };
   }, []);
 
   const soldCount = tickets.filter((t) => ['APPROVED', 'CHECKED_IN'].includes(t.status)).length;

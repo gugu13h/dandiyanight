@@ -319,52 +319,129 @@ export async function repairTicketsForBookings(bookings) {
     for (const rawTicketNumber of booking.ticketNumbers || []) {
       const ticketNumber = Number(rawTicketNumber);
       if (Number.isInteger(ticketNumber) && ticketNumber > 0 && !ticketBookings.has(ticketNumber)) {
-        ticketBookings.set(ticketNumber, { booking, ticketStatus });
+        ticketBookings.set(ticketNumber, { booking });
       }
     }
   }
 
-  const repairs = [];
-  await Promise.all([...ticketBookings].map(async ([ticketNumber, { booking, ticketStatus }]) => {
-    const bookingId = booking.bookingId || booking.id;
-    const ticketRef = doc(db, TICKETS_COLLECTION, `ticket-${ticketNumber}`);
-    const ticketDoc = await getDoc(ticketRef);
-    const ticketData = ticketDoc.exists() ? ticketDoc.data() : null;
-    const needsRepair = !ticketData || ticketData.status === 'AVAILABLE' || (
-      ticketData.bookingId === bookingId &&
-      ticketData.status === 'RESERVED' &&
-      ticketStatus !== 'RESERVED'
-    );
-
-    if (needsRepair) {
-      repairs.push({
-        ticketRef,
-        ticketNumber,
-        booking,
-        bookingId,
-        ticketStatus,
-      });
+  const ticketsSnapshot = await getDocs(collection(db, TICKETS_COLLECTION));
+  const ticketNumbersToReconcile = new Set(ticketBookings.keys());
+  ticketsSnapshot.docs.forEach((ticketDoc) => {
+    const ticketData = ticketDoc.data();
+    if (ticketData.status !== 'AVAILABLE') {
+      const ticketNumber = Number(ticketData.ticketNumber);
+      if (Number.isInteger(ticketNumber) && ticketNumber > 0) {
+        ticketNumbersToReconcile.add(ticketNumber);
+      }
     }
+  });
+
+  const repairs = await Promise.all([...ticketNumbersToReconcile].map(async (ticketNumber) => {
+    const ticketRef = doc(db, TICKETS_COLLECTION, `ticket-${ticketNumber}`);
+    return runTransaction(db, async (transaction) => {
+      const ticketDoc = await transaction.get(ticketRef);
+      const ticketData = ticketDoc.exists() ? ticketDoc.data() : null;
+      const expectedBooking = ticketBookings.get(ticketNumber);
+      const expectedBookingId = expectedBooking
+        ? expectedBooking.booking.bookingId || expectedBooking.booking.id
+        : null;
+      const currentBookingId = ticketData?.bookingId || null;
+      const bookingRefs = new Map();
+
+      if (expectedBookingId) {
+        bookingRefs.set(expectedBookingId, doc(db, BOOKINGS_COLLECTION, expectedBookingId));
+      }
+      if (currentBookingId) {
+        bookingRefs.set(currentBookingId, doc(db, BOOKINGS_COLLECTION, currentBookingId));
+      }
+
+      const bookingDocs = new Map();
+      for (const [bookingId, bookingRef] of bookingRefs) {
+        bookingDocs.set(bookingId, await transaction.get(bookingRef));
+      }
+
+      const isActiveBookingForTicket = (bookingId) => {
+        const bookingDoc = bookingDocs.get(bookingId);
+        if (!bookingDoc?.exists()) return false;
+
+        const booking = bookingDoc.data();
+        if ((booking.eventId || 'default') !== 'default') return false;
+
+        const claimsTicket = (booking.ticketNumbers || [])
+          .some((number) => Number(number) === ticketNumber);
+        if (!claimsTicket) return false;
+
+        if (booking.status === 'PAYMENT_SUCCESSFUL' ||
+            ['PAYMENT_PENDING', 'PAYMENT_PROOF_SUBMITTED'].includes(booking.status)) {
+          return true;
+        }
+        if (booking.status === 'REGISTRATION_PENDING') {
+          const expiresAt = booking.reservationExpiresAt?.toDate?.()?.getTime();
+          return !expiresAt || expiresAt > Date.now();
+        }
+        return false;
+      };
+
+      if (currentBookingId && isActiveBookingForTicket(currentBookingId)) {
+        if (currentBookingId !== expectedBookingId) return false;
+      }
+
+      if (expectedBookingId && isActiveBookingForTicket(expectedBookingId)) {
+        if (currentBookingId && currentBookingId !== expectedBookingId &&
+            isActiveBookingForTicket(currentBookingId)) {
+          return false;
+        }
+
+        const booking = bookingDocs.get(expectedBookingId).data();
+        const ticketStatus = booking.status === 'PAYMENT_SUCCESSFUL'
+          ? 'APPROVED'
+          : ['PAYMENT_PENDING', 'PAYMENT_PROOF_SUBMITTED'].includes(booking.status)
+            ? 'PAYMENT_PENDING'
+            : 'RESERVED';
+
+        if (ticketData?.bookingId === expectedBookingId &&
+            (ticketData.status === ticketStatus ||
+              (ticketStatus === 'APPROVED' && ticketData.status === 'CHECKED_IN'))) {
+          return false;
+        }
+
+        transaction.set(ticketRef, {
+          ticketNumber,
+          eventId: booking.eventId || 'default',
+          status: ticketStatus,
+          bookingId: expectedBookingId,
+          userId: booking.userId || null,
+          reservedUntil: ticketStatus === 'RESERVED'
+            ? booking.reservationExpiresAt || null
+            : null,
+        }, { merge: true });
+        return true;
+      }
+
+      if (ticketData && ticketData.status !== 'AVAILABLE') {
+        transaction.set(ticketRef, {
+          ticketNumber,
+          eventId: ticketData.eventId || 'default',
+          status: 'AVAILABLE',
+          bookingId: null,
+          userId: null,
+          reservedUntil: null,
+          approvedAt: null,
+          checkedIn: false,
+          checkedInAt: null,
+          checkedInBy: null,
+          sweetReceived: false,
+          sweetReceivedAt: null,
+          sweetReceivedBy: null,
+        }, { merge: true });
+        return true;
+      }
+
+      return false;
+    });
   }));
 
-  for (let start = 0; start < repairs.length; start += 450) {
-    const batch = writeBatch(db);
-    repairs.slice(start, start + 450).forEach((repair) => {
-      batch.set(repair.ticketRef, {
-        ticketNumber: repair.ticketNumber,
-        eventId: repair.booking.eventId || 'default',
-        status: repair.ticketStatus,
-        bookingId: repair.bookingId,
-        userId: repair.booking.userId || null,
-        reservedUntil: repair.ticketStatus === 'RESERVED'
-          ? repair.booking.reservationExpiresAt || null
-          : null,
-      }, { merge: true });
-    });
-    await batch.commit();
-  }
-
-  return repairs.length;
+  return repairs.filter(Boolean).length;
 }
 
 export async function updatePaymentQr(bookingId, qrCodeUrl) {
