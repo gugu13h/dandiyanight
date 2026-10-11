@@ -3,7 +3,6 @@ import { db } from '../firebase/firebaseConfig';
 import {
   collection,
   doc,
-  deleteDoc,
   getDoc,
   getDocs,
   setDoc,
@@ -455,34 +454,42 @@ export async function updatePaymentQr(bookingId, qrCodeUrl) {
 // Delete a booking and release its reserved tickets (admin only).
 export async function deleteBooking(bookingId) {
   const bookingRef = doc(db, BOOKINGS_COLLECTION, bookingId);
-  const bookingDoc = await getDoc(bookingRef);
+  await runTransaction(db, async (transaction) => {
+    const bookingDoc = await transaction.get(bookingRef);
+    if (!bookingDoc.exists()) {
+      throw new Error('Booking not found');
+    }
 
-  if (!bookingDoc.exists()) {
-    throw new Error('Booking not found');
-  }
+    const bookingData = bookingDoc.data();
+    const ticketRefs = (bookingData.ticketNumbers || []).map((ticketNum) =>
+      doc(db, TICKETS_COLLECTION, `ticket-${ticketNum}`)
+    );
+    const ticketDocs = await Promise.all(
+      ticketRefs.map((ticketRef) => transaction.get(ticketRef))
+    );
 
-  const bookingData = bookingDoc.data();
-  const batch = writeBatch(db);
+    ticketDocs.forEach((ticketDoc, index) => {
+      if (!ticketDoc.exists() || ticketDoc.data().bookingId !== bookingId) return;
 
-  for (const ticketNum of bookingData.ticketNumbers || []) {
-    batch.set(doc(db, TICKETS_COLLECTION, `ticket-${ticketNum}`), {
-      ticketNumber: ticketNum,
-      eventId: bookingData.eventId || 'default',
-      status: 'AVAILABLE',
-      bookingId: null,
-      userId: null,
-      reservedUntil: null,
-      approvedAt: null,
-      checkedIn: false,
-      checkedInAt: null,
-      sweetReceived: false,
-      sweetReceivedAt: null,
-      sweetReceivedBy: null,
-    }, { merge: true });
-  }
+      transaction.set(ticketRefs[index], {
+        ticketNumber: bookingData.ticketNumbers[index],
+        eventId: bookingData.eventId || 'default',
+        status: 'AVAILABLE',
+        bookingId: null,
+        userId: null,
+        reservedUntil: null,
+        approvedAt: null,
+        checkedIn: false,
+        checkedInAt: null,
+        checkedInBy: null,
+        sweetReceived: false,
+        sweetReceivedAt: null,
+        sweetReceivedBy: null,
+      }, { merge: true });
+    });
 
-  batch.delete(bookingRef);
-  await batch.commit();
+    transaction.delete(bookingRef);
+  });
 }
 
 // Check-in a booking

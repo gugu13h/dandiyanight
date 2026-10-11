@@ -5,6 +5,7 @@ import { subscribeToTickets, initializeTickets } from '../../services/ticketServ
 import { subscribeToEvent, updateEvent } from '../../services/eventService';
 import {
   createBooking,
+  deleteBooking,
   repairTicketsForBookings,
   subscribeToAllBookings,
   updateBookingStatus,
@@ -12,7 +13,7 @@ import {
 import { logAdminAction } from '../../services/adminService';
 import { formatCurrency, getTicketStatusLabel, validateMobile, validateName } from '../../utils/helpers';
 import toast from 'react-hot-toast';
-import { Ticket, Save, Loader2, AlertTriangle, User, Phone, CheckCircle2 } from 'lucide-react';
+import { Ticket, Save, Loader2, AlertTriangle, User, Phone, CheckCircle2, Trash2 } from 'lucide-react';
 
 export default function AdminTickets() {
   const { currentUser } = useAuth();
@@ -28,6 +29,7 @@ export default function AdminTickets() {
   const [directMobile, setDirectMobile] = useState('');
   const [selectedDirectTickets, setSelectedDirectTickets] = useState([]);
   const [directBooking, setDirectBooking] = useState(false);
+  const [deletingBookingId, setDeletingBookingId] = useState(null);
 
   useEffect(() => {
     const unsub1 = subscribeToTickets((data) => { setTickets(data); setLoading(false); });
@@ -51,7 +53,7 @@ export default function AdminTickets() {
   const ticketCount = Math.max(1, parseInt(totalTickets, 10) || 100);
   const ticketNumbers = Array.from({ length: ticketCount }, (_, index) => index + 1);
   const ticketByNumber = new Map(tickets.map((ticket) => [ticket.ticketNumber, ticket]));
-  const activeBookingStatusByTicket = new Map();
+  const activeBookingByTicket = new Map();
   bookings.forEach((booking) => {
     if ((booking.eventId || 'default') !== 'default') return;
 
@@ -71,20 +73,24 @@ export default function AdminTickets() {
     (booking.ticketNumbers || []).forEach((rawTicketNumber) => {
       const ticketNumber = Number(rawTicketNumber);
       if (Number.isInteger(ticketNumber) && ticketNumber > 0 &&
-          !activeBookingStatusByTicket.has(ticketNumber)) {
-        activeBookingStatusByTicket.set(ticketNumber, status);
+          !activeBookingByTicket.has(ticketNumber)) {
+        activeBookingByTicket.set(ticketNumber, {
+          status,
+          booking,
+          bookingId: booking.bookingId || booking.id,
+        });
       }
     });
   });
   const getTicketStatus = (ticketNumber) => {
     if (!bookingsLoaded) return ticketByNumber.get(ticketNumber)?.status || 'AVAILABLE';
 
-    const bookingStatus = activeBookingStatusByTicket.get(ticketNumber);
-    if (bookingStatus) {
+    const activeBooking = activeBookingByTicket.get(ticketNumber);
+    if (activeBooking) {
       const ticket = ticketByNumber.get(ticketNumber);
-      return bookingStatus === 'APPROVED' && ticket?.status === 'CHECKED_IN'
+      return activeBooking.status === 'APPROVED' && ticket?.status === 'CHECKED_IN'
         ? 'CHECKED_IN'
-        : bookingStatus;
+        : activeBooking.status;
     }
     return 'AVAILABLE';
   };
@@ -99,6 +105,38 @@ export default function AdminTickets() {
     ['APPROVED', 'CHECKED_IN'].includes(getTicketStatus(number))).length;
   const reservedCount = ticketNumbers.filter((number) =>
     ['RESERVED', 'PAYMENT_PENDING'].includes(getTicketStatus(number))).length;
+
+  const handleDeleteTicketBooking = async (ticketNumber) => {
+    const activeBooking = activeBookingByTicket.get(ticketNumber);
+    if (!activeBooking) {
+      toast.error('No active booking found for this ticket');
+      return;
+    }
+
+    const { booking, bookingId } = activeBooking;
+    const bookingTickets = (booking.ticketNumbers || []).join(', ');
+    if (!window.confirm(
+      `Delete booking ${bookingId} for ticket #${ticketNumber}? This will delete the full booking and release tickets: ${bookingTickets}.`
+    )) return;
+
+    setDeletingBookingId(bookingId);
+    try {
+      await deleteBooking(bookingId);
+      await logAdminAction(
+        currentUser.uid,
+        'BOOKING_DELETED',
+        `Deleted booking ${bookingId} from ticket map; released tickets: ${bookingTickets}`,
+        bookingId
+      );
+      setSelectedDirectTickets((selected) =>
+        selected.filter((number) => !(booking.ticketNumbers || []).includes(number)));
+      toast.success(`Booking ${bookingId} deleted; its tickets are available`);
+    } catch (error) {
+      toast.error(error.message || 'Unable to delete booking');
+    } finally {
+      setDeletingBookingId(null);
+    }
+  };
 
   const toggleDirectTicket = (ticketNumber) => {
     if (!isTicketAvailable(ticketNumber)) return;
@@ -304,6 +342,7 @@ export default function AdminTickets() {
         <div className="ticket-grid">
           {ticketNumbers.map((ticketNumber) => {
             const status = getTicketStatus(ticketNumber);
+            const activeBooking = activeBookingByTicket.get(ticketNumber);
             let className = 'ticket-cell ';
             if (status === 'AVAILABLE') className += 'available';
             else if (['RESERVED', 'PAYMENT_PENDING'].includes(status)) className += 'reserved';
@@ -313,8 +352,34 @@ export default function AdminTickets() {
 
             return (
               <div key={ticketNumber} className={className}
-                style={{ cursor: 'default' }} title={`#${ticketNumber} - ${getTicketStatusLabel(status)}`}>
+                style={{ cursor: 'default', position: 'relative' }}
+                title={`#${ticketNumber} - ${getTicketStatusLabel(status)}`}>
                 {ticketNumber}
+                {activeBooking && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => handleDeleteTicketBooking(ticketNumber)}
+                    disabled={deletingBookingId === activeBooking.bookingId}
+                    aria-label={`Delete booking ${activeBooking.bookingId} for ticket ${ticketNumber}`}
+                    title={`Delete booking ${activeBooking.bookingId} and release all its tickets`}
+                    style={{
+                      position: 'absolute',
+                      top: -7,
+                      right: -7,
+                      zIndex: 1,
+                      minWidth: 22,
+                      width: 22,
+                      height: 22,
+                      padding: 2,
+                      color: 'var(--color-error)',
+                      background: 'var(--color-surface)',
+                      borderRadius: '50%',
+                    }}
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                )}
               </div>
             );
           })}
