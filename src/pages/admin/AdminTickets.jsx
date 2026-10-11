@@ -17,6 +17,8 @@ import { Ticket, Save, Loader2, AlertTriangle, User, Phone, CheckCircle2 } from 
 export default function AdminTickets() {
   const { currentUser } = useAuth();
   const [tickets, setTickets] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [bookingsLoaded, setBookingsLoaded] = useState(false);
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [totalTickets, setTotalTickets] = useState('');
@@ -30,6 +32,8 @@ export default function AdminTickets() {
   useEffect(() => {
     const unsub1 = subscribeToTickets((data) => { setTickets(data); setLoading(false); });
     const unsub2 = subscribeToAllBookings((bookings) => {
+      setBookings(bookings);
+      setBookingsLoaded(true);
       repairTicketsForBookings(bookings).catch((error) => {
         console.error('Could not repair ticket availability:', error);
       });
@@ -44,20 +48,57 @@ export default function AdminTickets() {
     return () => { unsub1(); unsub2(); unsub3(); };
   }, []);
 
-  const soldCount = tickets.filter((t) => ['APPROVED', 'CHECKED_IN'].includes(t.status)).length;
-  const reservedCount = tickets.filter((t) => ['RESERVED', 'PAYMENT_PENDING'].includes(t.status)).length;
   const ticketCount = Math.max(1, parseInt(totalTickets, 10) || 100);
   const ticketNumbers = Array.from({ length: ticketCount }, (_, index) => index + 1);
   const ticketByNumber = new Map(tickets.map((ticket) => [ticket.ticketNumber, ticket]));
+  const activeBookingStatusByTicket = new Map();
+  bookings.forEach((booking) => {
+    if ((booking.eventId || 'default') !== 'default') return;
+
+    let status;
+    if (booking.status === 'PAYMENT_SUCCESSFUL') {
+      status = 'APPROVED';
+    } else if (['PAYMENT_PENDING', 'PAYMENT_PROOF_SUBMITTED'].includes(booking.status)) {
+      status = 'PAYMENT_PENDING';
+    } else if (booking.status === 'REGISTRATION_PENDING') {
+      const expiresAt = booking.reservationExpiresAt?.toDate?.()?.getTime();
+      if (expiresAt && expiresAt <= Date.now()) return;
+      status = 'RESERVED';
+    } else {
+      return;
+    }
+
+    (booking.ticketNumbers || []).forEach((rawTicketNumber) => {
+      const ticketNumber = Number(rawTicketNumber);
+      if (Number.isInteger(ticketNumber) && ticketNumber > 0 &&
+          !activeBookingStatusByTicket.has(ticketNumber)) {
+        activeBookingStatusByTicket.set(ticketNumber, status);
+      }
+    });
+  });
+  const getTicketStatus = (ticketNumber) => {
+    if (!bookingsLoaded) return ticketByNumber.get(ticketNumber)?.status || 'AVAILABLE';
+
+    const bookingStatus = activeBookingStatusByTicket.get(ticketNumber);
+    if (bookingStatus) {
+      const ticket = ticketByNumber.get(ticketNumber);
+      return bookingStatus === 'APPROVED' && ticket?.status === 'CHECKED_IN'
+        ? 'CHECKED_IN'
+        : bookingStatus;
+    }
+    return 'AVAILABLE';
+  };
   const availableCount = ticketNumbers.filter((number) => {
-    const ticket = ticketByNumber.get(number);
-    return !ticket || ticket.status === 'AVAILABLE';
+    return getTicketStatus(number) === 'AVAILABLE';
   }).length;
 
   const isTicketAvailable = (ticketNumber) => {
-    const ticket = ticketByNumber.get(ticketNumber);
-    return !ticket || ticket.status === 'AVAILABLE';
+    return getTicketStatus(ticketNumber) === 'AVAILABLE';
   };
+  const soldCount = ticketNumbers.filter((number) =>
+    ['APPROVED', 'CHECKED_IN'].includes(getTicketStatus(number))).length;
+  const reservedCount = ticketNumbers.filter((number) =>
+    ['RESERVED', 'PAYMENT_PENDING'].includes(getTicketStatus(number))).length;
 
   const toggleDirectTicket = (ticketNumber) => {
     if (!isTicketAvailable(ticketNumber)) return;
@@ -262,8 +303,7 @@ export default function AdminTickets() {
         </div>
         <div className="ticket-grid">
           {ticketNumbers.map((ticketNumber) => {
-            const ticket = ticketByNumber.get(ticketNumber);
-            const status = ticket?.status || 'AVAILABLE';
+            const status = getTicketStatus(ticketNumber);
             let className = 'ticket-cell ';
             if (status === 'AVAILABLE') className += 'available';
             else if (['RESERVED', 'PAYMENT_PENDING'].includes(status)) className += 'reserved';
