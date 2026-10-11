@@ -241,10 +241,10 @@ export default function BookTicketsPage() {
             <div className="card">
               <AlertTriangle size={48} style={{ color: 'var(--color-warning)', margin: '0 auto var(--space-lg)' }} />
               <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', marginBottom: 'var(--space-md)' }}>
-                Bookings Closed
+                Housefull
               </h2>
               <p style={{ color: 'var(--color-text-secondary)', marginBottom: 'var(--space-lg)' }}>
-                Bookings are currently closed because of the heavy crowd. For further information, please call the management team.
+                Due to heavy crowd demand, online booking is currently closed. Please contact the management team for any assistance.
               </p>
               {event?.contactPhone && (
                 <a href={`tel:${event.contactPhone}`} className="btn btn-primary" style={{ marginRight: 'var(--space-sm)' }}>

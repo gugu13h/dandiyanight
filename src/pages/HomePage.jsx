@@ -1,6 +1,6 @@
 // Home Page
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { subscribeToEvent } from '../services/eventService';
 import { formatDate, formatTime, formatCurrency } from '../utils/helpers';
 import BookingNoticeModal from '../components/BookingNoticeModal';
@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 
 export default function HomePage() {
+  const navigate = useNavigate();
   const [event, setEvent] = useState(null);
   const [daysUntilEvent, setDaysUntilEvent] = useState(null);
   const [showBookingNotice, setShowBookingNotice] = useState(false);
@@ -110,9 +111,19 @@ export default function HomePage() {
           </div>
 
           <div className="hero-cta">
-            <button type="button" onClick={() => setShowBookingNotice(true)} className="btn btn-primary btn-lg btn-glow">
+            <button
+              type="button"
+              onClick={() => {
+                if (event?.bookingStatus === 'BOOKING_CLOSED') {
+                  setShowBookingNotice(true);
+                  return;
+                }
+                navigate('/book');
+              }}
+              className="btn btn-primary btn-lg btn-glow"
+            >
               <Ticket size={20} />
-              Book Now
+              {event?.bookingStatus === 'BOOKING_CLOSED' ? 'Housefull' : 'Book Now'}
             </button>
             <Link to="/event" className="btn btn-secondary btn-lg">
               View Details
@@ -200,8 +211,18 @@ export default function HomePage() {
           }}>
             Limited tickets available. Book now to secure your spot at the most talked-about Garba event of the season.
           </p>
-          <button type="button" onClick={() => setShowBookingNotice(true)} className="btn btn-primary btn-lg btn-glow">
-            <Ticket size={20} /> Reserve Your Tickets
+          <button
+            type="button"
+            onClick={() => {
+              if (event?.bookingStatus === 'BOOKING_CLOSED') {
+                setShowBookingNotice(true);
+                return;
+              }
+              navigate('/book');
+            }}
+            className="btn btn-primary btn-lg btn-glow"
+          >
+            <Ticket size={20} /> {event?.bookingStatus === 'BOOKING_CLOSED' ? 'Housefull' : 'Reserve Your Tickets'}
           </button>
         </div>
       </section>
