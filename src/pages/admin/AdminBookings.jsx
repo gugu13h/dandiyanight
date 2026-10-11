@@ -1,5 +1,5 @@
 // Admin Bookings Management
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { subscribeToAllBookings, updateBookingStatus, deleteBooking, repairTicketsForBookings } from '../../services/bookingService';
 import { logAdminAction } from '../../services/adminService';
@@ -15,6 +15,7 @@ import {
 
 export default function AdminBookings() {
   const { currentUser } = useAuth();
+  const repairTimerRef = useRef(null);
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -27,11 +28,24 @@ export default function AdminBookings() {
     const unsub = subscribeToAllBookings((data) => {
       setBookings(data);
       setLoading(false);
-      repairTicketsForBookings(data).catch((error) => {
-        console.error('Could not repair ticket availability:', error);
-      });
+
+      if (repairTimerRef.current) {
+        clearTimeout(repairTimerRef.current);
+      }
+
+      repairTimerRef.current = setTimeout(() => {
+        repairTicketsForBookings(data).catch((error) => {
+          console.error('Could not repair ticket availability:', error);
+        });
+      }, 500);
     });
-    return unsub;
+
+    return () => {
+      unsub();
+      if (repairTimerRef.current) {
+        clearTimeout(repairTimerRef.current);
+      }
+    };
   }, []);
 
   const handleStatusChange = async (booking, newStatus) => {
@@ -122,16 +136,20 @@ export default function AdminBookings() {
     }
   };
 
-  const filtered = bookings.filter((b) => {
-    const matchesSearch = !searchTerm ||
-      b.bookingId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      b.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      b.mobile?.includes(searchTerm) ||
-      b.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      b.ticketNumbers?.some((t) => String(t).includes(searchTerm));
-    const matchesStatus = statusFilter === 'ALL' || b.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const filtered = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+
+    return bookings.filter((b) => {
+      const matchesSearch = !normalizedSearch ||
+        b.bookingId?.toLowerCase().includes(normalizedSearch) ||
+        b.name?.toLowerCase().includes(normalizedSearch) ||
+        b.mobile?.includes(searchTerm) ||
+        b.email?.toLowerCase().includes(normalizedSearch) ||
+        b.ticketNumbers?.some((t) => String(t).includes(searchTerm));
+      const matchesStatus = statusFilter === 'ALL' || b.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [bookings, searchTerm, statusFilter]);
 
   if (loading) {
     return <div className="loading-container"><div className="spinner" /><p>Loading bookings...</p></div>;

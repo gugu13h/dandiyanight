@@ -1,5 +1,5 @@
 // Admin Ticket Management
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { subscribeToTickets, initializeTickets } from '../../services/ticketService';
 import { subscribeToEvent, updateEvent } from '../../services/eventService';
@@ -17,6 +17,7 @@ import { Ticket, Save, Loader2, AlertTriangle, User, Phone, CheckCircle2, Trash2
 
 export default function AdminTickets() {
   const { currentUser } = useAuth();
+  const repairTimerRef = useRef(null);
   const [tickets, setTickets] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [bookingsLoaded, setBookingsLoaded] = useState(false);
@@ -36,9 +37,16 @@ export default function AdminTickets() {
     const unsub2 = subscribeToAllBookings((bookings) => {
       setBookings(bookings);
       setBookingsLoaded(true);
-      repairTicketsForBookings(bookings).catch((error) => {
-        console.error('Could not repair ticket availability:', error);
-      });
+
+      if (repairTimerRef.current) {
+        clearTimeout(repairTimerRef.current);
+      }
+
+      repairTimerRef.current = setTimeout(() => {
+        repairTicketsForBookings(bookings).catch((error) => {
+          console.error('Could not repair ticket availability:', error);
+        });
+      }, 500);
     });
     const unsub3 = subscribeToEvent('default', (e) => {
       setEvent(e);
@@ -47,41 +55,60 @@ export default function AdminTickets() {
         setTicketPrice(String(e.ticketPrice || 500));
       }
     });
-    return () => { unsub1(); unsub2(); unsub3(); };
+    return () => {
+      unsub1();
+      unsub2();
+      unsub3();
+      if (repairTimerRef.current) {
+        clearTimeout(repairTimerRef.current);
+      }
+    };
   }, []);
 
-  const ticketCount = Math.max(1, parseInt(totalTickets, 10) || 100);
-  const ticketNumbers = Array.from({ length: ticketCount }, (_, index) => index + 1);
-  const ticketByNumber = new Map(tickets.map((ticket) => [ticket.ticketNumber, ticket]));
-  const activeBookingByTicket = new Map();
-  bookings.forEach((booking) => {
-    if ((booking.eventId || 'default') !== 'default') return;
+  const ticketCount = useMemo(
+    () => Math.max(1, parseInt(totalTickets, 10) || 100),
+    [totalTickets]
+  );
+  const ticketNumbers = useMemo(
+    () => Array.from({ length: ticketCount }, (_, index) => index + 1),
+    [ticketCount]
+  );
+  const ticketByNumber = useMemo(
+    () => new Map(tickets.map((ticket) => [ticket.ticketNumber, ticket])),
+    [tickets]
+  );
+  const activeBookingByTicket = useMemo(() => {
+    const map = new Map();
+    bookings.forEach((booking) => {
+      if ((booking.eventId || 'default') !== 'default') return;
 
-    let status;
-    if (booking.status === 'PAYMENT_SUCCESSFUL') {
-      status = 'APPROVED';
-    } else if (['PAYMENT_PENDING', 'PAYMENT_PROOF_SUBMITTED'].includes(booking.status)) {
-      status = 'PAYMENT_PENDING';
-    } else if (booking.status === 'REGISTRATION_PENDING') {
-      const expiresAt = booking.reservationExpiresAt?.toDate?.()?.getTime();
-      if (expiresAt && expiresAt <= Date.now()) return;
-      status = 'RESERVED';
-    } else {
-      return;
-    }
-
-    (booking.ticketNumbers || []).forEach((rawTicketNumber) => {
-      const ticketNumber = Number(rawTicketNumber);
-      if (Number.isInteger(ticketNumber) && ticketNumber > 0 &&
-          !activeBookingByTicket.has(ticketNumber)) {
-        activeBookingByTicket.set(ticketNumber, {
-          status,
-          booking,
-          bookingId: booking.bookingId || booking.id,
-        });
+      let status;
+      if (booking.status === 'PAYMENT_SUCCESSFUL') {
+        status = 'APPROVED';
+      } else if (['PAYMENT_PENDING', 'PAYMENT_PROOF_SUBMITTED'].includes(booking.status)) {
+        status = 'PAYMENT_PENDING';
+      } else if (booking.status === 'REGISTRATION_PENDING') {
+        const expiresAt = booking.reservationExpiresAt?.toDate?.()?.getTime();
+        if (expiresAt && expiresAt <= Date.now()) return;
+        status = 'RESERVED';
+      } else {
+        return;
       }
+
+      (booking.ticketNumbers || []).forEach((rawTicketNumber) => {
+        const ticketNumber = Number(rawTicketNumber);
+        if (Number.isInteger(ticketNumber) && ticketNumber > 0 && !map.has(ticketNumber)) {
+          map.set(ticketNumber, {
+            status,
+            booking,
+            bookingId: booking.bookingId || booking.id,
+          });
+        }
+      });
     });
-  });
+    return map;
+  }, [bookings]);
+
   const getTicketStatus = (ticketNumber) => {
     if (!bookingsLoaded) return ticketByNumber.get(ticketNumber)?.status || 'AVAILABLE';
 
@@ -94,17 +121,20 @@ export default function AdminTickets() {
     }
     return 'AVAILABLE';
   };
-  const availableCount = ticketNumbers.filter((number) => {
-    return getTicketStatus(number) === 'AVAILABLE';
-  }).length;
+
+  const availableCount = useMemo(() => {
+    return ticketNumbers.filter((number) => getTicketStatus(number) === 'AVAILABLE').length;
+  }, [ticketNumbers, bookingsLoaded, ticketByNumber, activeBookingByTicket]);
 
   const isTicketAvailable = (ticketNumber) => {
     return getTicketStatus(ticketNumber) === 'AVAILABLE';
   };
-  const soldCount = ticketNumbers.filter((number) =>
-    ['APPROVED', 'CHECKED_IN'].includes(getTicketStatus(number))).length;
-  const reservedCount = ticketNumbers.filter((number) =>
-    ['RESERVED', 'PAYMENT_PENDING'].includes(getTicketStatus(number))).length;
+  const soldCount = useMemo(() => {
+    return ticketNumbers.filter((number) => ['APPROVED', 'CHECKED_IN'].includes(getTicketStatus(number))).length;
+  }, [ticketNumbers, bookingsLoaded, ticketByNumber, activeBookingByTicket]);
+  const reservedCount = useMemo(() => {
+    return ticketNumbers.filter((number) => ['RESERVED', 'PAYMENT_PENDING'].includes(getTicketStatus(number))).length;
+  }, [ticketNumbers, bookingsLoaded, ticketByNumber, activeBookingByTicket]);
 
   const handleDeleteTicketBooking = async (ticketNumber) => {
     const activeBooking = activeBookingByTicket.get(ticketNumber);
