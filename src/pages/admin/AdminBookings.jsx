@@ -75,11 +75,17 @@ export default function AdminBookings() {
 
   const handleDelete = async (booking) => {
     if (!window.confirm(`Delete booking ${booking.bookingId}? This will release its tickets.`)) return;
-    setProcessing(booking.bookingId);
+    const bookingId = booking.bookingId;
+    setProcessing(bookingId);
     try {
-      await deleteBooking(booking.bookingId);
-      await logAdminAction(currentUser.uid, 'BOOKING_DELETED', `Deleted ${booking.bookingId}`, booking.bookingId);
-      setSelectedBooking(null);
+      await deleteBooking(bookingId);
+      setBookings((currentBookings) =>
+        currentBookings.filter((currentBooking) => currentBooking.bookingId !== bookingId)
+      );
+      if (selectedBooking?.bookingId === bookingId) {
+        setSelectedBooking(null);
+      }
+      await logAdminAction(currentUser.uid, 'BOOKING_DELETED', `Deleted ${bookingId}`, bookingId);
       toast.success('Booking deleted');
     } catch (error) {
       toast.error(error.message || 'Failed to delete booking');

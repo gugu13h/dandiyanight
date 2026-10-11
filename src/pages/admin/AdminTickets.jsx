@@ -122,6 +122,9 @@ export default function AdminTickets() {
     setDeletingBookingId(bookingId);
     try {
       await deleteBooking(bookingId);
+      setBookings((currentBookings) =>
+        currentBookings.filter((currentBooking) => (currentBooking.bookingId || currentBooking.id) !== bookingId)
+      );
       await logAdminAction(
         currentUser.uid,
         'BOOKING_DELETED',

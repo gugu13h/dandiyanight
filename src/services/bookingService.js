@@ -461,7 +461,8 @@ export async function deleteBooking(bookingId) {
     }
 
     const bookingData = bookingDoc.data();
-    const ticketRefs = (bookingData.ticketNumbers || []).map((ticketNum) =>
+    const ticketNumbers = [...new Set((bookingData.ticketNumbers || []).map((ticketNum) => Number(ticketNum)).filter((ticketNum) => Number.isInteger(ticketNum) && ticketNum > 0))];
+    const ticketRefs = ticketNumbers.map((ticketNum) =>
       doc(db, TICKETS_COLLECTION, `ticket-${ticketNum}`)
     );
     const ticketDocs = await Promise.all(
@@ -472,7 +473,7 @@ export async function deleteBooking(bookingId) {
       if (!ticketDoc.exists() || ticketDoc.data().bookingId !== bookingId) return;
 
       transaction.set(ticketRefs[index], {
-        ticketNumber: bookingData.ticketNumbers[index],
+        ticketNumber: ticketNumbers[index],
         eventId: bookingData.eventId || 'default',
         status: 'AVAILABLE',
         bookingId: null,
